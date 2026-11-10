@@ -48,7 +48,6 @@ DISTFILES += \
     rpm/harbour-swiss-transport.changes.in \
     rpm/harbour-swiss-transport.changes.run.in \
     rpm/harbour-swiss-transport.spec \
-    rpm/harbour-swiss-transport.yaml \
     translations/harbour-swiss-transport-de.ts \
     translations/harbour-swiss-transport.ts \
     harbour-swiss-transport.desktop

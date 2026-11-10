@@ -21,16 +21,16 @@ transport (SBB and partner operators), powered by transport.opendata.ch.
 %setup -q -n %{name}-%{version}
 
 %build
-%qtc_qmake5
+%qmake5
 make %{?_smp_mflags}
 
 %install
 rm -rf %{buildroot}
-%qtc_makeinstall
+%qmake5_install
 
 %files
 %defattr(-,root,root,-)
 %{_bindir}
 %{_datadir}/%{name}
 %{_datadir}/applications/%{name}.desktop
-%{_datadir}/icons/hicolor/86x86/apps/%{name}.png
+%{_datadir}/icons/hicolor/*/apps/%{name}.png

@@ -12,15 +12,16 @@ Page {
     property var stations: []
     property bool loading: false
     property string errorText: ""
+    property string query: ""   // kept here, NOT read from the header by id
 
     function search() {
         errorText = ""
-        if (searchField.text.length < 2) {
+        if (query.length < 2) {
             stations = []
             return
         }
         loading = true
-        Api.searchStations(searchField.text, function(list) {
+        Api.searchStations(query, function(list) {
             stations = list
             loading = false
         }, function(err) {
@@ -47,7 +48,7 @@ Page {
                 id: searchField
                 width: parent.width
                 placeholderText: qsTr("Station name…")
-                onTextChanged: timer.restart()
+                onTextChanged: { root.query = text; timer.restart() }
                 EnterKey.onClicked: { timer.stop(); root.search(); focus = false }
                 EnterKey.iconSource: "image://theme/icon-m-search"
             }

@@ -29,7 +29,8 @@ Page {
 
             RemorseItem { id: remorse }
 
-            menu: ContextMenu {
+            ContextMenu {
+                id: favMenu
                 MenuItem {
                     text: qsTr("Remove")
                     onClicked: remorse.execute(item, qsTr("Removing"), function() {
@@ -38,6 +39,8 @@ Page {
                     })
                 }
             }
+
+            onPressAndHold: favMenu.show(item)
 
             onClicked: pageStack.push(Qt.resolvedUrl("StationboardPage.qml"),
                                       { station: station })
