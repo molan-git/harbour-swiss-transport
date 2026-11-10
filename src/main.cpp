@@ -2,9 +2,9 @@
 
 #include <QGuiApplication>
 #include <QQuickView>
-#include <QQmlContext>
+#include <QtQml>
 
-#include "transportclient.h"
+#include "appsettings.h"
 
 int main(int argc, char *argv[])
 {
@@ -14,12 +14,8 @@ int main(int argc, char *argv[])
     QQuickView *view =
         SailfishApp::createView();
 
-    TransportClient transportClient;
-
-    view->rootContext()->setContextProperty(
-        "transportClient",
-        &transportClient
-    );
+    qmlRegisterType<AppSettings>(
+        "Harbour.SwissTransport", 1, 0, "AppSettings");
 
     view->setSource(
         SailfishApp::pathTo("qml/harbour-swiss-transport.qml")

@@ -24,30 +24,33 @@ QT += network
 # Application source files
 SOURCES += \
     src/main.cpp \
-    src/transportclient.cpp
+    src/appsettings.cpp
 
 
 # Header files
 HEADERS += \
-    src/transportclient.h
+    src/appsettings.h
 
 
 # QML pages, cover and application distribution files
 DISTFILES += \
     qml/harbour-swiss-transport.qml \
+    qml/cover/CoverPage.qml \
+    qml/js/Api.js \
+    qml/pages/MainPage.qml \
+    qml/pages/StationPickerPage.qml \
+    qml/pages/ConnectionsPage.qml \
+    qml/pages/ConnectionDetailPage.qml \
+    qml/pages/StationboardPage.qml \
+    qml/pages/FavouritesPage.qml \
+    qml/pages/NearbyPage.qml \
+    qml/pages/AboutPage.qml \
     rpm/harbour-swiss-transport.changes.in \
     rpm/harbour-swiss-transport.changes.run.in \
     rpm/harbour-swiss-transport.spec \
+    rpm/harbour-swiss-transport.yaml \
     translations/harbour-swiss-transport-de.ts \
-    translations/harbour-swiss-transport.ts
-    qml/cover/CoverPage.qml
-    qml/pages/StationSearchPage.qml
-    qml/pages/StationBoardPage.qml
-    qml/pages/JourneyPlanerPage.qml
-    rpm/harbour-swiss-transport.changes.in
-    rpm/harbour-swiss-transport.changes.run.in
-    rpm/harbour-swiss-transport.spec
-    translations/*.ts
+    translations/harbour-swiss-transport.ts \
     harbour-swiss-transport.desktop
 
 
@@ -61,5 +64,5 @@ CONFIG += sailfishapp_i18n
 
 
 # Translations
-TRANSLATIONS +=
+TRANSLATIONS += \
     translations/harbour-swiss-transport-de.ts

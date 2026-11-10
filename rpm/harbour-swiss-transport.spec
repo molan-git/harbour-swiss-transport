@@ -1,35 +1,36 @@
-Name:       harbour-swiss-transport
-Version:    0.1.0
-Release:    1
-Summary:    Swiss public transport for Sailfish OS
-License:    BSD-3-Clause
-Group:      Qt/Qt
+Name: harbour-swiss-transport
+Version: 0.2.0
+Release: 1
+Summary: Swiss public transport timetables
+Group: Harbour/Rich UI
+License: MIT
+URL: https://github.com/molan-git/harbour-swiss-transport
+Source0: %{name}-%{version}.tar.bz2
+Requires: sailfishsilica-qt5 >= 0.10.49
+BuildRequires: pkgconfig(sailfishapp) >= 1.0.2
 BuildRequires: pkgconfig(Qt5Core)
-BuildRequires: pkgconfig(Qt5Gui)
 BuildRequires: pkgconfig(Qt5Qml)
 BuildRequires: pkgconfig(Qt5Quick)
-BuildRequires: pkgconfig(Qt5Network)
-BuildRequires: sailfishsilica-qt5
-Requires:   sailfishsilica-qt5
+BuildRequires: qt5-qtdeclarative-devel
 
 %description
-Swiss public transport application for Sailfish OS.
+Timetables, station boards and real-time delays for Swiss public
+transport (SBB and partner operators), powered by transport.opendata.ch.
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{version}
 
 %build
-%qmake5
-%make_build
+%qtc_qmake5
+make %{?_smp_mflags}
 
 %install
-%qmake5_install
+rm -rf %{buildroot}
+%qtc_makeinstall
 
 %files
-%{_bindir}/harbour-swiss-transport
-%{_datadir}/applications/harbour-swiss-transport.desktop
-%{_datadir}/harbour-swiss-transport/qml/
-%{_datadir}/icons/hicolor/86x86/apps/harbour-swiss-transport.png
-%{_datadir}/icons/hicolor/108x108/apps/harbour-swiss-transport.png
-%{_datadir}/icons/hicolor/128x128/apps/harbour-swiss-transport.png
-%{_datadir}/icons/hicolor/172x172/apps/harbour-swiss-transport.png
+%defattr(-,root,root,-)
+%{_bindir}
+%{_datadir}/%{name}
+%{_datadir}/applications/%{name}.desktop
+%{_datadir}/icons/hicolor/86x86/apps/%{name}.png
