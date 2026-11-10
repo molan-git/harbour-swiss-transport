@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Swiss Transport
+Comment=Swiss public transport information
+Exec=harbour-swiss-transport
+Icon=harbour-swiss-transport
+X-Nemo-Application-Type=silica-qt5

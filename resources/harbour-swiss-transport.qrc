@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file>../qml/harbour-swiss-transport.qml</file>
+        <file alias="qml/main.qml">../qml/pages/main.qml</file>
+        <file>../qml/pages/main.qml</file>
+        <file>../qml/pages/StationSearchPage.qml</file>
+        <file>../qml/pages/StationBoardPage.qml</file>
+        <file>../qml/pages/JourneyPlanerPage.qml</file>
+        <file>../qml/cover/CoverPage.qml</file>
+    </qresource>
+</RCC>
