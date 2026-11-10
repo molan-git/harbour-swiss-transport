@@ -39,15 +39,27 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>%1 min late</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Hide %1 intermediate stops</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Show %1 intermediate stops</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Total %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>to %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>departs %1 min late</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>arrives %1 min late</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -82,7 +94,15 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Departs %1 min late</source>
+        <source>+%1 min late, departs %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Dep. Pl. %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Arr. Pl. %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

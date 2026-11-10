@@ -9,29 +9,53 @@ Page {
 
     property var legList: []   // built from connection.sections
 
+    // Hidden reference labels: measure the exact width of the widest
+    // possible value at the actual font size. Their implicit width is the
+    // column width -> wide enough on every density, never overlapping.
+    Label {
+        id: timeMetrics      // "00:00" at fontSizeMedium (dep/arr rows)
+        visible: false
+        text: "00:00"
+        font.pixelSize: Theme.fontSizeMedium
+    }
+    Label {
+        id: platMetrics      // "Pl. 88" at fontSizeSmall
+        visible: false
+        text: "Pl. 88"
+        font.pixelSize: Theme.fontSizeSmall
+    }
+    Label {
+        id: timeMetricsSm    // "00:00" at fontSizeExtraSmall (intermediate stops)
+        visible: false
+        text: "00:00"
+        font.pixelSize: Theme.fontSizeExtraSmall
+    }
+    Label {
+        id: platMetricsSm
+        visible: false
+        text: "Pl. 88"
+        font.pixelSize: Theme.fontSizeExtraSmall
+    }
+
     function buildLegs() {
         var legs = []
         if (!connection || !connection.sections) return legs
         for (var i = 0; i < connection.sections.length; i++) {
             var s = connection.sections[i]
             if (s.journey) {
-                var stops = []
-                if (s.journey.passList) {
-                    for (var j = 0; j < s.journey.passList.length; j++)
-                        stops.push(s.journey.passList[j])
-                }
                 legs.push({
                     type: "journey",
                     label: Api.lineLabel(s),
+                    direction: s.journey.to ? s.journey.to : "",
                     fromName: s.departure ? s.departure.station.name : "",
                     toName: s.arrival ? s.arrival.station.name : "",
                     dep: s.departure ? s.departure.departure : "",
                     arr: s.arrival ? s.arrival.arrival : "",
-                    depDelay: s.departure ? Api.delayOf(s.departure) : 0,
-                    arrDelay: s.arrival ? Api.delayOf(s.arrival) : 0,
-                    depPlatform: s.departure && s.departure.platform ? s.departure.platform : "",
-                    arrPlatform: s.arrival && s.arrival.platform ? s.arrival.platform : "",
-                    stops: stops,
+                    depDelay: s.departure ? Api.delayOf(s.departure, "departure") : 0,
+                    arrDelay: s.arrival ? Api.delayOf(s.arrival, "arrival") : 0,
+                    depPlatform: (s.departure && s.departure.platform) ? String(s.departure.platform) : "",
+                    arrPlatform: (s.arrival && s.arrival.platform) ? String(s.arrival.platform) : "",
+                    stops: s.journey.passList ? s.journey.passList : [],
                     expanded: false
                 })
             } else if (s.walk) {
@@ -52,10 +76,13 @@ Page {
     Component.onCompleted: legList = buildLegs()
 
     SilicaListView {
+        id: listView
         anchors.fill: parent
 
         header: Column {
-            width: parent.width
+            width: listView.width
+            spacing: Theme.paddingMedium
+
             PageHeader {
                 title: Api.hhmm(connection.from.departure) + " → "
                        + Api.hhmm(connection.to.arrival)
@@ -64,140 +91,215 @@ Page {
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 text: connection.from.station.name + " → " + connection.to.station.name
-                      + "  ·  " + Api.fmtDuration(connection.duration / 60)
+                      + "\n" + qsTr("Total %1").arg(Api.fmtDuration(Api.connectionMinutes(connection)))
                 color: Theme.secondaryColor
                 font.pixelSize: Theme.fontSizeSmall
+                truncationMode: TruncationMode.Fade
             }
-            spacing: Theme.paddingMedium
         }
 
-        delegate: BackgroundItem {
+        delegate: Item {
             id: item
+
             property var leg: modelData
-            height: legColumn.height + Theme.paddingMedium
-            onClicked: {
-                if (leg.type === "journey" && leg.stops.length > 2) {
-                    // mutate, then reassign so the ListView rebuilds the delegates
-                    var l = root.legList[index]
-                    l.expanded = !l.expanded
-                    root.legList = root.legList.slice()
+
+            // content-driven height: never overlaps
+            width: listView.width
+            height: legCard.height + 2 * Theme.paddingMedium
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: {
+                    if (item.leg.type === "journey" && item.leg.stops.length > 2) {
+                        var l = root.legList[index]
+                        l.expanded = !l.expanded
+                        root.legList = root.legList.slice()
+                    }
                 }
             }
 
             Column {
-                id: legColumn
+                id: legCard
                 x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
-                anchors.verticalCenter: parent.verticalCenter
+                width: item.width - 2 * Theme.horizontalPageMargin
+                y: Theme.paddingMedium
                 spacing: Theme.paddingSmall
 
-                // walk section
+                // ---------- walk leg ----------
                 Column {
-                    width: parent.width
-                    visible: leg.type === "walk"
+                    width: legCard.width
+                    visible: item.leg.type === "walk"
                     spacing: Theme.paddingSmall
+
                     Label {
-                        text: qsTr("Walk %1 min").arg(leg.minutes)
+                        width: legCard.width
+                        text: qsTr("Walk %1 min").arg(item.leg.minutes)
                         color: Theme.highlightColor
+                        font.pixelSize: Theme.fontSizeMedium
                     }
                     Label {
-                        text: leg.fromName + " → " + leg.toName
+                        width: legCard.width
+                        text: Api.hhmm(item.leg.dep) + "  " + item.leg.fromName
                         color: Theme.secondaryColor
                         font.pixelSize: Theme.fontSizeSmall
-                        width: parent.width
+                        truncationMode: TruncationMode.Fade
+                    }
+                    Label {
+                        width: legCard.width
+                        text: Api.hhmm(item.leg.arr) + "  " + item.leg.toName
+                        color: Theme.secondaryColor
+                        font.pixelSize: Theme.fontSizeSmall
                         truncationMode: TruncationMode.Fade
                     }
                 }
 
-                // train/bus section
+                // ---------- train / bus / ship leg ----------
                 Column {
-                    width: parent.width
-                    visible: leg.type === "journey"
+                    width: legCard.width
+                    visible: item.leg.type === "journey"
                     spacing: Theme.paddingSmall
 
-                    Label {
-                        text: leg.label
-                        color: Theme.highlightColor
-                        font.pixelSize: Theme.fontSizeMedium
-                    }
-
                     Row {
+                        width: legCard.width
                         spacing: Theme.paddingSmall
                         Label {
-                            text: Api.hhmm(leg.dep)
-                            color: leg.depDelay > 0 ? "red" : Theme.primaryColor
-                        }
-                        Label {
-                            text: leg.fromName
-                            width: root.width - Theme.horizontalPageMargin * 2 - 60
+                            width: legCard.width * 0.4
+                            text: item.leg.label
+                            color: Theme.highlightColor
+                            font.pixelSize: Theme.fontSizeMedium
                             truncationMode: TruncationMode.Fade
-                            color: item.highlighted ? Theme.highlightColor : Theme.primaryColor
                         }
                         Label {
-                            text: leg.depPlatform ? qsTr("Pl. %1").arg(leg.depPlatform) : ""
+                            width: legCard.width * 0.6 - Theme.paddingSmall
+                            horizontalAlignment: Text.AlignRight
+                            text: qsTr("to %1").arg(item.leg.direction)
                             color: Theme.secondaryColor
                             font.pixelSize: Theme.fontSizeSmall
+                            truncationMode: TruncationMode.Fade
                         }
                     }
 
+                    // departure row
                     Row {
+                        width: legCard.width
                         spacing: Theme.paddingSmall
                         Label {
-                            text: Api.hhmm(leg.arr)
-                            color: leg.arrDelay > 0 ? "red" : Theme.primaryColor
+                            width: timeMetrics.width
+                            text: Api.hhmm(item.leg.dep)
+                            color: item.leg.depDelay > 0 ? "red" : Theme.primaryColor
+                            font.pixelSize: Theme.fontSizeMedium
                         }
                         Label {
-                            text: leg.toName
-                            width: root.width - Theme.horizontalPageMargin * 2 - 60
-                            truncationMode: TruncationMode.Fade
-                            color: item.highlighted ? Theme.highlightColor : Theme.primaryColor
-                        }
-                        Label {
-                            text: leg.arrPlatform ? qsTr("Pl. %1").arg(leg.arrPlatform) : ""
+                            width: platMetrics.width
+                            horizontalAlignment: Text.AlignRight
+                            text: item.leg.depPlatform
+                                ? qsTr("Pl. %1").arg(item.leg.depPlatform) : ""
                             color: Theme.secondaryColor
                             font.pixelSize: Theme.fontSizeSmall
+                            truncationMode: TruncationMode.Elide
+                        }
+                        Label {
+                            width: parent.width - timeMetrics.width - platMetrics.width
+                                   - 2 * Theme.paddingSmall
+                            text: item.leg.fromName
+                            color: Theme.primaryColor
+                            font.pixelSize: Theme.fontSizeMedium
+                            truncationMode: TruncationMode.Fade
                         }
                     }
 
+                    // arrival row
+                    Row {
+                        width: legCard.width
+                        spacing: Theme.paddingSmall
+                        Label {
+                            width: timeMetrics.width
+                            text: Api.hhmm(item.leg.arr)
+                            color: item.leg.arrDelay > 0 ? "red" : Theme.primaryColor
+                            font.pixelSize: Theme.fontSizeMedium
+                        }
+                        Label {
+                            width: platMetrics.width
+                            horizontalAlignment: Text.AlignRight
+                            text: item.leg.arrPlatform
+                                ? qsTr("Pl. %1").arg(item.leg.arrPlatform) : ""
+                            color: Theme.secondaryColor
+                            font.pixelSize: Theme.fontSizeSmall
+                            truncationMode: TruncationMode.Elide
+                        }
+                        Label {
+                            width: parent.width - timeMetrics.width - platMetrics.width
+                                   - 2 * Theme.paddingSmall
+                            text: item.leg.toName
+                            color: Theme.primaryColor
+                            font.pixelSize: Theme.fontSizeMedium
+                            truncationMode: TruncationMode.Fade
+                        }
+                    }
+
+                    // delay warning
                     Label {
-                        visible: leg.depDelay > 0
-                        text: qsTr("%1 min late").arg(leg.depDelay)
+                        width: legCard.width
+                        visible: item.leg.depDelay > 0 || item.leg.arrDelay > 0
+                        text: {
+                            var parts = []
+                            if (item.leg.depDelay > 0)
+                                parts.push(qsTr("departs %1 min late").arg(item.leg.depDelay))
+                            if (item.leg.arrDelay > 0)
+                                parts.push(qsTr("arrives %1 min late").arg(item.leg.arrDelay))
+                            return parts.join(", ")
+                        }
                         color: "red"
                         font.pixelSize: Theme.fontSizeExtraSmall
                     }
 
+                    // stops toggle
                     Label {
-                        visible: leg.stops.length > 2
-                        text: leg.expanded ? qsTr("Hide %1 intermediate stops").arg(leg.stops.length - 2)
-                                           : qsTr("Show %1 intermediate stops").arg(leg.stops.length - 2)
-                        color: Theme.secondaryColor
+                        width: legCard.width
+                        visible: item.leg.stops.length > 2
+                        text: item.leg.expanded
+                              ? qsTr("Hide %1 intermediate stops").arg(item.leg.stops.length - 2)
+                              : qsTr("Show %1 intermediate stops").arg(item.leg.stops.length - 2)
+                        color: Theme.highlightColor
                         font.pixelSize: Theme.fontSizeExtraSmall
                     }
 
                     // intermediate stops
                     Column {
-                        width: parent.width
-                        visible: leg.type === "journey" && leg.expanded
+                        width: legCard.width
+                        visible: item.leg.expanded
+                        spacing: Theme.paddingSmall
+
                         Repeater {
-                            model: {
-                                var arr = leg.stops.slice(1, leg.stops.length - 1)
-                                return arr
-                            }
+                            model: item.leg.stops.length > 2
+                                   ? item.leg.stops.slice(1, item.leg.stops.length - 1)
+                                   : []
                             Row {
+                                width: legCard.width
                                 spacing: Theme.paddingSmall
                                 Label {
-                                    text: (modelData.departure
-                                           ? Api.hhmm(modelData.departure)
-                                           : Api.hhmm(modelData.arrival))
+                                    width: timeMetricsSm.width
+                                    text: modelData.departure
+                                          ? Api.hhmm(modelData.departure)
+                                          : Api.hhmm(modelData.arrival)
                                     color: Api.delayOf(modelData) > 0 ? "red" : Theme.secondaryColor
                                     font.pixelSize: Theme.fontSizeExtraSmall
                                 }
                                 Label {
+                                    width: platMetricsSm.width
+                                    horizontalAlignment: Text.AlignRight
+                                    text: modelData.platform ? String(modelData.platform) : ""
+                                    color: Theme.secondaryColor
+                                    font.pixelSize: Theme.fontSizeExtraSmall
+                                    truncationMode: TruncationMode.Elide
+                                }
+                                Label {
+                                    width: parent.width - timeMetricsSm.width
+                                           - platMetricsSm.width - 2 * Theme.paddingSmall
                                     text: modelData.station ? modelData.station.name : ""
                                     color: Theme.secondaryColor
                                     font.pixelSize: Theme.fontSizeExtraSmall
                                     truncationMode: TruncationMode.Fade
-                                    width: root.width - Theme.horizontalPageMargin * 2 - 50
                                 }
                             }
                         }

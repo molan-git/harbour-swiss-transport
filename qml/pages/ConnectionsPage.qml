@@ -15,12 +15,18 @@ Page {
     property string errorText: ""
     property int page: 0
 
-    function fromKey() { return fromStation.id ? fromStation.id : fromStation.name }
-    function toKey()   { return toStation.id ? toStation.id : toStation.name }
+    function fromKey() {
+        return fromStation.id ? fromStation.id : fromStation.name
+    }
+
+    function toKey() {
+        return toStation.id ? toStation.id : toStation.name
+    }
 
     function reload() {
         errorText = ""
         loading = true
+
         Api.connections(fromKey(), toKey(), dateStr, timeStr, page, function(list) {
             connections = list
             loading = false
@@ -41,6 +47,7 @@ Page {
                 text: qsTr("Reload")
                 onClicked: root.reload()
             }
+
             MenuItem {
                 text: qsTr("Reverse direction")
                 onClicked: {
@@ -56,27 +63,39 @@ Page {
         PushUpMenu {
             MenuItem {
                 text: qsTr("Later connections")
-                onClicked: { root.page += 1; root.reload() }
+                onClicked: {
+                    root.page += 1
+                    root.reload()
+                }
             }
+
             MenuItem {
                 text: qsTr("Earlier connections")
                 enabled: root.page > 0
-                onClicked: { root.page -= 1; root.reload() }
+                onClicked: {
+                    root.page -= 1
+                    root.reload()
+                }
             }
         }
 
         header: Column {
-            width: parent.width
+            width: listView.width
+            spacing: Theme.paddingMedium
+
             PageHeader {
                 title: qsTr("Connections")
             }
+
             Label {
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
-                text: root.fromStation.name + " → " + root.toStation.name
-                      + "\n" + root.dateStr + "  " + root.timeStr
+                text: root.fromStation
+                      ? root.fromStation.name + " → " + root.toStation.name
+                      : ""
                 color: Theme.secondaryColor
                 font.pixelSize: Theme.fontSizeSmall
+                truncationMode: TruncationMode.Fade
             }
         }
 
@@ -88,7 +107,10 @@ Page {
         }
 
         ViewPlaceholder {
-            enabled: !root.loading && root.connections.length === 0 && root.errorText === ""
+            enabled: !root.loading
+                     && root.connections.length === 0
+                     && root.errorText === ""
+
             text: qsTr("No connections found")
         }
 
@@ -100,78 +122,168 @@ Page {
 
         delegate: BackgroundItem {
             id: item
-            property var c: modelData
 
-            onClicked: pageStack.push(Qt.resolvedUrl("ConnectionDetailPage.qml"),
-                                      { connection: c })
+            height: rowContent.height + 2 * Theme.paddingMedium
+
+            property var c: modelData
+            property int depDelay: c.from
+                                   ? Api.delayOf(c.from, "departure") : 0
+            property int arrDelay: c.to
+                                   ? Api.delayOf(c.to, "arrival") : 0
+            property int minutes: Api.connectionMinutes(c)
+
+            onClicked: pageStack.push(
+                Qt.resolvedUrl("ConnectionDetailPage.qml"),
+                { connection: c }
+            )
+
+            // Hidden reference label for measuring HH:MM width.
+            Label {
+                id: timeMetrics
+                visible: false
+                text: "00:00"
+                font.pixelSize: Theme.fontSizeLarge
+            }
 
             Column {
+                id: rowContent
+
                 x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
+                width: item.width - 2 * Theme.horizontalPageMargin
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.paddingSmall
 
                 Row {
+                    width: rowContent.width
                     spacing: Theme.paddingSmall
+
                     Label {
+                        width: timeMetrics.width
                         text: Api.hhmm(c.from.departure)
-                        color: c.from.delay && c.from.delay > 0 ? "red" : Theme.primaryColor
+                        color: item.depDelay > 0
+                               ? "red" : Theme.primaryColor
                         font.pixelSize: Theme.fontSizeLarge
                     }
+
                     Label {
+                        id: arrowLabel
                         text: "→"
                         color: Theme.secondaryColor
                         font.pixelSize: Theme.fontSizeLarge
                     }
+
                     Label {
+                        width: timeMetrics.width
                         text: Api.hhmm(c.to.arrival)
-                        color: c.to.delay && c.to.delay > 0 ? "red" : Theme.primaryColor
+                        color: item.arrDelay > 0
+                               ? "red" : Theme.primaryColor
                         font.pixelSize: Theme.fontSizeLarge
+                    }
+
+                    Label {
+                        width: parent.width
+                               - 2 * timeMetrics.width
+                               - arrowLabel.implicitWidth
+                               - 3 * Theme.paddingSmall
+
+                        horizontalAlignment: Text.AlignRight
+
+                        text: Api.fmtDuration(item.minutes)
+                        color: Theme.highlightColor
+                        font.pixelSize: Theme.fontSizeMedium
+                        truncationMode: TruncationMode.Elide
                     }
                 }
 
+                // Departure delay information.
                 Label {
-                    width: parent.width
+                    width: rowContent.width
+                    visible: item.depDelay > 0
+
+                    text: {
+                        if (!visible)
+                            return ""
+
+                        var prog = (c.from.prognosis
+                                    && c.from.prognosis.departure)
+                                   ? c.from.prognosis.departure
+                                   : c.from.departure
+
+                        return qsTr("+%1 min late, departs %2")
+                               .arg(item.depDelay)
+                               .arg(Api.hhmm(prog))
+                    }
+
+                    color: "red"
+                    font.pixelSize: Theme.fontSizeExtraSmall
+                }
+
+                // Platform information.
+                Label {
+                    width: rowContent.width
+
+                    visible: (
+                        c.from.platform !== undefined
+                        && c.from.platform !== null
+                        && c.from.platform.length > 0
+                    ) || (
+                        c.to.platform !== undefined
+                        && c.to.platform !== null
+                        && c.to.platform.length > 0
+                    )
+
                     text: {
                         var parts = []
-                        if (c.from.delay && c.from.delay > 0)
-                            parts.push(qsTr("Departs %1 min late").arg(c.from.delay))
-                        var transfers = 0
-                        var products = []
-                        if (c.sections) {
-                            for (var i = 0; i < c.sections.length; i++) {
-                                var s = c.sections[i]
-                                if (s.journey) {
-                                    transfers++
-                                    var l = Api.lineLabel(s)
-                                    if (products.indexOf(l) < 0) products.push(l)
-                                }
-                            }
-                            transfers = Math.max(0, transfers - 1)
-                        }
-                        if (products.length) parts.push(products.join(" · "))
-                        parts.push(transfers === 0 ? qsTr("direct")
-                                                    : qsTr("%1 change(s)").arg(transfers))
-                        parts.push(Api.fmtDuration(c.duration / 60))
-                        return parts.join(" · ")
+
+                        if (c.from.platform)
+                            parts.push(
+                                qsTr("Dep. Pl. %1").arg(c.from.platform)
+                            )
+
+                        if (c.to.platform)
+                            parts.push(
+                                qsTr("Arr. Pl. %1").arg(c.to.platform)
+                            )
+
+                        return parts.join("  ·  ")
                     }
+
                     color: Theme.secondaryColor
-                    font.pixelSize: Theme.fontSizeSmall
+                    font.pixelSize: Theme.fontSizeExtraSmall
+                    truncationMode: TruncationMode.Fade
+                }
+
+                // Transport products and number of changes.
+                Label {
+                    width: rowContent.width
+
+                    text: {
+                        var parts = []
+
+                        if (c.products && c.products.length > 0)
+                            parts.push(c.products.join(" · "))
+
+                        var transfers = c.transfers !== undefined
+                                        ? c.transfers : 0
+
+                        parts.push(
+                            transfers === 0
+                            ? qsTr("direct")
+                            : qsTr("%1 change(s)").arg(transfers)
+                        )
+
+                        return parts.join("  ·  ")
+                    }
+
+                    color: Theme.secondaryColor
+                    font.pixelSize: Theme.fontSizeExtraSmall
                     truncationMode: TruncationMode.Fade
                 }
             }
-
-            Label {
-                anchors.right: parent.right
-                anchors.rightMargin: Theme.horizontalPageMargin
-                anchors.verticalCenter: parent.verticalCenter
-                text: Api.fmtDuration(c.duration / 60)
-                color: Theme.highlightColor
-                font.pixelSize: Theme.fontSizeSmall
-            }
         }
 
-        model: connections
+        model: root.connections
+
         VerticalScrollDecorator {}
     }
 }
